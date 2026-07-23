@@ -37,19 +37,63 @@ export function registerReminderHandlers(): void {
     }
   })
 
-  // ── CREATE ────────────────────────────────────────
+  // ── CREATE (with auto-cascade) ────────────────────
   ipcMain.handle('reminders:create', (_event, userId: string, data: Record<string, unknown>) => {
     const id = uuid()
+    const dueDate = (data.due_date as string) || new Date().toISOString().split('T')[0]
+    const isManual = !data.is_ai_suggested // manual reminders get cascades too if far in future
+
     db.prepare(
       `INSERT INTO reminders (id, title, description, reminder_type, priority, status, due_date, due_time,
         owner_id, case_id, client_id, document_id, source_module, is_ai_suggested, ai_confidence, ai_reason,
         recurrence_rule, tags, notes, created_by)
        VALUES (?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(id, data.title, data.description||null, data.reminder_type||'MANUAL', data.priority||'MEDIUM',
-      data.due_date, data.due_time||null, data.owner_id||userId, data.case_id||null, data.client_id||null,
+      dueDate, data.due_time||null, data.owner_id||userId, data.case_id||null, data.client_id||null,
       data.document_id||null, data.source_module||'MANUAL', data.is_ai_suggested?1:0, data.ai_confidence||null,
       data.ai_reason||null, data.recurrence_rule||null, data.tags?JSON.stringify(data.tags):null, data.notes||null, userId)
-    return { id }
+
+    // ── Auto-cascade: generate milestone reminders ──
+    const now = new Date()
+    const target = new Date(dueDate)
+    const daysUntil = Math.ceil((target.getTime() - now.getTime()) / 86400000)
+
+    // Only cascade if the due date is at least 3 days away
+    if (daysUntil >= 3) {
+      const milestones = [
+        { days: 30, label: '30天前' },
+        { days: 14, label: '两周前' },
+        { days: 7, label: '一周前' },
+        { days: 3, label: '三天前' },
+        { days: 1, label: '一天前' },
+      ]
+
+      for (const m of milestones) {
+        if (daysUntil >= m.days) {
+          const cascadeDate = new Date(target)
+          cascadeDate.setDate(cascadeDate.getDate() - m.days)
+          const cascadeDateStr = cascadeDate.toISOString().split('T')[0]
+
+          // Only create if the cascade date is in the future
+          if (cascadeDate > now) {
+            const cascadeId = uuid()
+            const cascadeTitle = `${m.label}提醒: ${data.title}`
+            db.prepare(
+              `INSERT INTO reminders (id, title, description, reminder_type, priority, status, due_date,
+                owner_id, case_id, client_id, source_module, is_ai_suggested, ai_reason, notes, created_by)
+               VALUES (?, ?, ?, 'CASCADE', ?, 'PENDING', ?, ?, ?, ?, 'CASCADE', 1, ?, ?, ?)`
+            ).run(cascadeId, cascadeTitle,
+              `原始截止日期: ${dueDate}，距离截止还有 ${m.days} 天`,
+              data.priority||'MEDIUM', cascadeDateStr,
+              data.owner_id||userId, data.case_id||null, data.client_id||null,
+              `自动生成: 距离截止日期${m.days}天的提醒`,
+              `父提醒: ${data.title}`, userId)
+          }
+        }
+      }
+    }
+
+    return { id, cascaded: daysUntil >= 3 }
   })
 
   // ── UPDATE ────────────────────────────────────────
@@ -101,6 +145,22 @@ export function registerReminderHandlers(): void {
     // Case deadlines within 3 days
     const soonCases = db.prepare("SELECT id, case_no, deadline_date, client_id FROM cases WHERE deleted_at IS NULL AND deadline_date BETWEEN date('now') AND date('now','+3 days') LIMIT 5").all() as any[]
     for (const c of soonCases) suggestions.push({ title:`案件截止: ${c.case_no}`, reminder_type:'CASE_DEADLINE', priority:'CRITICAL', due_date:c.deadline_date, case_id:c.id, client_id:c.client_id, reason:'案件截止在即', confidence:0.96 })
+
+    // Case deadlines >7 days away → suggest cascade reminders
+    const farCases = db.prepare("SELECT id, case_no, deadline_date, client_id FROM cases WHERE deleted_at IS NULL AND deadline_date > date('now','+7 days') AND deadline_date IS NOT NULL LIMIT 10").all() as any[]
+    for (const c of farCases) {
+      const daysUntil = Math.ceil((new Date(c.deadline_date).getTime() - Date.now()) / 86400000)
+      suggestions.push({
+        title: `级联提醒: ${c.case_no} (${daysUntil}天后截止)`,
+        reminder_type: 'CASCADE',
+        priority: 'MEDIUM',
+        due_date: c.deadline_date,
+        case_id: c.id,
+        client_id: c.client_id,
+        reason: `距离截止还有 ${daysUntil} 天，自动生成提前 30天/14天/7天/3天/1天 的提醒`,
+        confidence: 1.0
+      })
+    }
 
     // Missing docs
     const missingDocs = db.prepare("SELECT dc.doc_name_cn, dc.case_id, c.client_id FROM document_checklist dc LEFT JOIN cases c ON dc.case_id=c.id WHERE dc.status NOT IN ('RECEIVED','VERIFIED') AND dc.is_required=1 LIMIT 5").all() as any[]
