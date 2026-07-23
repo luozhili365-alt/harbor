@@ -1,4 +1,4 @@
-const API_BASE = "https://harbor-api.onrender.com/api/v1";
+const API_BASE = "/api/v1";
 
 interface TokenStore {
   accessToken: string | null;

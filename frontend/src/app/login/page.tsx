@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
-const API_URL = "https://harbor-api.onrender.com";
+const API_URL = "";
 
 const EMAIL_DOMAINS = [
   { label: "@qq.com", value: "@qq.com" },
