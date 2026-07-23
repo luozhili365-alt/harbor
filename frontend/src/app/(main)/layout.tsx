@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -27,5 +29,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  return <main className="p-8">{children}</main>;
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar />
+      <div className="ml-60">
+        <Header />
+        <main className="p-8">{children}</main>
+      </div>
+    </div>
+  );
 }
