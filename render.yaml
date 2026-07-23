@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: harbor-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: CORS_ORIGINS
+        value: "https://harbor-app.vercel.app,http://localhost:3000"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL_FULL
+        fromDatabase:
+          name: harbor-db
+          property: connectionString
+      - key: AI_ENABLED
+        value: "false"
+
+databases:
+  - name: harbor-db
+    databaseName: harbor
+    plan: free

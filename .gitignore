@@ -1,0 +1,15 @@
+node_modules/
+out/
+dist/
+release/
+.env
+*.db
+*.db-journal
+*.db-wal
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+.claude/
+.next/
+.vercel/
