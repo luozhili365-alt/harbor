@@ -1,14 +1,19 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 export function Header() {
-  const { user, logout } = useAuth();
   const router = useRouter();
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    setUserName(localStorage.getItem("harbor_user_name") || "");
+  }, []);
 
   const handleLogout = () => {
-    logout();
+    localStorage.removeItem("harbor_refresh_token");
+    localStorage.removeItem("harbor_user_name");
     router.push("/login");
   };
 
@@ -16,7 +21,7 @@ export function Header() {
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-8">
       <div className="flex items-center gap-4">
         <span className="text-sm text-gray-500">
-          欢迎回来，{user?.name || "..."}
+          欢迎回来，{userName || "..."}
         </span>
       </div>
 
@@ -27,26 +32,16 @@ export function Header() {
         >
           <span>🔍</span>
           <span>搜索案件、邮件、文件...</span>
-          <kbd className="ml-8 rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-400">
-            ⌘K
-          </kbd>
+          <kbd className="ml-8 rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-400">⌘K</kbd>
         </button>
 
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-harbor-100 flex items-center justify-center text-harbor-700 font-medium text-sm">
-            {user?.name?.charAt(0) || "?"}
+            {userName.charAt(0) || "?"}
           </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-medium text-gray-700">{user?.name}</p>
-            <p className="text-xs text-gray-500">
-              {user?.role === "admin" ? "管理员" : user?.role === "broker" ? "报关员" : "查看者"}
-            </p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="ml-2 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-            title="退出登录"
-          >
+          <span className="text-sm font-medium text-gray-700">{userName}</span>
+          <button onClick={handleLogout}
+            className="ml-2 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors" title="退出登录">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <polyline points="16 17 21 12 16 7" />

@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", label: "仪表板", icon: "📊" },
-  { href: "/cases", label: "案件管理", icon: "📋" },
-  { href: "/emails", label: "邮件中心", icon: "📧" },
-  { href: "/clients", label: "客户管理", icon: "👥" },
-  { href: "/tasks", label: "任务提醒", icon: "✅" },
-  { href: "/search", label: "智能搜索", icon: "🔍" },
+  { href: "/dashboard", label: "工作台", icon: "⚡" },
+  { href: "/emails", label: "收件箱", icon: "📥" },
+  { href: "/cases", label: "案件", icon: "📋" },
+  { href: "/clients", label: "客户", icon: "👥" },
+  { href: "/documents", label: "文件", icon: "📂" },
+  { href: "/tasks", label: "提醒", icon: "🔔" },
 ];
 
 export function Sidebar() {
@@ -24,7 +24,7 @@ export function Sidebar() {
         </div>
         <div>
           <h1 className="text-lg font-bold text-gray-900">Harbor</h1>
-          <p className="text-xs text-gray-500">报关AI助手</p>
+          <p className="text-xs text-gray-500">报关AI工作台</p>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export function Sidebar() {
           )}
         >
           <span className="text-lg">⚙️</span>
-          <span>系统设置</span>
+          <span>设置</span>
         </Link>
       </div>
     </aside>
