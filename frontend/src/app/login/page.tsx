@@ -4,8 +4,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
+const EMAIL_DOMAINS = [
+  { label: "@qq.com", value: "@qq.com" },
+  { label: "@163.com", value: "@163.com" },
+  { label: "@126.com", value: "@126.com" },
+  { label: "@gmail.com", value: "@gmail.com" },
+  { label: "@outlook.com", value: "@outlook.com" },
+  { label: "@hotmail.com", value: "@hotmail.com" },
+  { label: "@sina.com", value: "@sina.com" },
+  { label: "@aliyun.com", value: "@aliyun.com" },
+  { label: "@foxmail.com", value: "@foxmail.com" },
+  { label: "@yeah.net", value: "@yeah.net" },
+  { label: "自定义", value: "__custom__" },
+];
+
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [emailPrefix, setEmailPrefix] = useState("");
+  const [emailDomain, setEmailDomain] = useState("@qq.com");
+  const [customDomain, setCustomDomain] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,23 +34,33 @@ export default function LoginPage() {
 
   const router = useRouter();
 
+  const fullEmail = emailDomain === "__custom__"
+    ? emailPrefix + customDomain
+    : emailPrefix + emailDomain;
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!emailPrefix.trim()) { setError("请输入邮箱地址"); return; }
+    if (emailDomain === "__custom__" && !customDomain.trim()) { setError("请输入自定义邮箱域名"); return; }
+    if (password.length < 1) { setError("请输入密码"); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/auth/login`, {
+      const res = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: fullEmail.trim(), password }),
       });
-      if (!res.ok) throw new Error("邮箱或密码错误");
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.detail || "邮箱或密码错误");
+      }
       const data = await res.json();
       localStorage.setItem("harbor_token", data.access_token);
       localStorage.setItem("harbor_refresh", data.refresh_token);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "登录失败");
+      setError(err.message === "Failed to fetch" ? "无法连接服务器，请检查网络" : err.message || "登录失败");
     } finally {
       setLoading(false);
     }
@@ -42,17 +70,19 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     if (!name.trim()) { setError("请输入姓名"); return; }
+    if (!emailPrefix.trim()) { setError("请输入邮箱地址"); return; }
+    if (emailDomain === "__custom__" && !customDomain.trim()) { setError("请输入自定义邮箱域名"); return; }
     if (password.length < 6) { setError("密码至少6位"); return; }
     if (password !== confirmPassword) { setError("两次密码不一致"); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/auth/register`, {
+      const res = await fetch(`${API_URL}/api/v1/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: fullEmail.trim(), password }),
       });
       if (!res.ok) {
-        const d = await res.json();
+        const d = await res.json().catch(() => ({}));
         throw new Error(d.detail || "注册失败");
       }
       const data = await res.json();
@@ -60,7 +90,7 @@ export default function LoginPage() {
       localStorage.setItem("harbor_refresh", data.refresh_token);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "注册失败");
+      setError(err.message === "Failed to fetch" ? "无法连接服务器，请检查网络" : err.message || "注册失败");
     } finally {
       setLoading(false);
     }
@@ -83,8 +113,19 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">邮箱</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-harbor-500 focus:outline-none focus:ring-2 focus:ring-harbor-100" placeholder="broker@example.com" required autoFocus />
+                <div className="flex gap-0">
+                  <input type="text" value={emailPrefix} onChange={(e) => setEmailPrefix(e.target.value)}
+                    className="flex-1 rounded-l-lg border border-r-0 border-gray-300 px-4 py-2.5 text-sm focus:border-harbor-500 focus:outline-none focus:ring-2 focus:ring-harbor-100" placeholder="输入邮箱地址" required autoFocus />
+                  {emailDomain === "__custom__" ? (
+                    <input type="text" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)}
+                      className="w-40 rounded-r-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-harbor-500 focus:outline-none focus:ring-2 focus:ring-harbor-100" placeholder="@your-company.com" required />
+                  ) : (
+                    <select value={emailDomain} onChange={(e) => setEmailDomain(e.target.value)}
+                      className="w-36 rounded-r-lg border border-gray-300 bg-gray-50 px-2 py-2.5 text-sm text-gray-600 focus:border-harbor-500 focus:outline-none focus:ring-2 focus:ring-harbor-100">
+                      {EMAIL_DOMAINS.map((d) => (<option key={d.value} value={d.value}>{d.label}</option>))}
+                    </select>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">密码</label>
@@ -110,8 +151,19 @@ export default function LoginPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">邮箱</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-harbor-500 focus:outline-none focus:ring-2 focus:ring-harbor-100" placeholder="broker@example.com" required />
+                <div className="flex gap-0">
+                  <input type="text" value={emailPrefix} onChange={(e) => setEmailPrefix(e.target.value)}
+                    className="flex-1 rounded-l-lg border border-r-0 border-gray-300 px-4 py-2.5 text-sm focus:border-harbor-500 focus:outline-none focus:ring-2 focus:ring-harbor-100" placeholder="输入邮箱地址" required />
+                  {emailDomain === "__custom__" ? (
+                    <input type="text" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)}
+                      className="w-40 rounded-r-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-harbor-500 focus:outline-none focus:ring-2 focus:ring-harbor-100" placeholder="@your-company.com" required />
+                  ) : (
+                    <select value={emailDomain} onChange={(e) => setEmailDomain(e.target.value)}
+                      className="w-36 rounded-r-lg border border-gray-300 bg-gray-50 px-2 py-2.5 text-sm text-gray-600 focus:border-harbor-500 focus:outline-none focus:ring-2 focus:ring-harbor-100">
+                      {EMAIL_DOMAINS.map((d) => (<option key={d.value} value={d.value}>{d.label}</option>))}
+                    </select>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">密码</label>
@@ -132,14 +184,11 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Forgot password modal */}
         {showForgot && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
             <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-xl mx-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">忘记密码</h3>
-              <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                请联系管理员重置密码。如果你是唯一的账号且无法登录，需要重置数据库后重新注册。
-              </p>
+              <p className="text-xs text-gray-500 leading-relaxed mb-4">请联系管理员重置密码。如果你是唯一的账号且无法登录，需要重置数据库后重新注册。</p>
               <button onClick={() => setShowForgot(false)} className="w-full rounded-lg border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50">关闭</button>
             </div>
           </div>
