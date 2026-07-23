@@ -1,14 +1,50 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskListResponse
 
+CASCADE_MILESTONES = [
+    (30, "30天前"),
+    (14, "两周前"),
+    (7, "一周前"),
+    (3, "三天前"),
+    (1, "一天前"),
+]
+
 
 class TaskService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    def _generate_cascade(self, parent_title: str, due_date: datetime, priority: str,
+                          user_id: str, case_id: Optional[str] = None) -> list[Task]:
+        """Auto-generate cascade milestone reminders before a deadline."""
+        now = datetime.now(timezone.utc)
+        cascades = []
+
+        for days_before, label in CASCADE_MILESTONES:
+            cascade_date = due_date - timedelta(days=days_before)
+            if cascade_date <= now:
+                continue  # don't create past reminders
+
+            task = Task(
+                id=str(uuid.uuid4()),
+                title=f"{label}提醒: {parent_title}",
+                description=f"原始截止日期: {due_date.strftime('%Y-%m-%d')}，距离截止还有 {days_before} 天",
+                task_type="CASCADE",
+                priority=priority,
+                status="PENDING",
+                due_date=cascade_date,
+                created_by=user_id,
+                case_id=case_id,
+            )
+            self.db.add(task)
+            cascades.append(task)
+
+        return cascades
 
     async def list_tasks(
         self,
@@ -89,6 +125,20 @@ class TaskService:
         task = Task(created_by=user_id, **data.model_dump())
         self.db.add(task)
         await self.db.flush()
+
+        # Auto-cascade: generate milestone reminders for far-future tasks
+        if task.due_date:
+            days_until = (task.due_date - datetime.now(timezone.utc)).days
+            if days_until >= 3:
+                self._generate_cascade(
+                    parent_title=task.title,
+                    due_date=task.due_date,
+                    priority=task.priority or "MEDIUM",
+                    user_id=user_id,
+                    case_id=task.case_id,
+                )
+                await self.db.flush()
+
         return task
 
     async def update_task(self, task: Task, data: TaskUpdate) -> Task:
