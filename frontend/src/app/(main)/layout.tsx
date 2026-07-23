@@ -1,22 +1,22 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Header } from "@/components/layout/Header";
+import { useEffect, useState } from "react";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    const token = localStorage.getItem("harbor_refresh_token");
+    if (!token) {
       router.push("/login");
+    } else {
+      setChecking(false);
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [router]);
 
-  if (isLoading) {
+  if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -27,17 +27,5 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="ml-60">
-        <Header />
-        <main className="p-8">{children}</main>
-      </div>
-    </div>
-  );
+  return <main className="p-8">{children}</main>;
 }

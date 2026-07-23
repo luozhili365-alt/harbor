@@ -57,7 +57,8 @@ export default function LoginPage() {
       }
       const data = await res.json();
       localStorage.setItem("harbor_refresh_token", data.refresh_token);
-      router.push("/dashboard");
+      localStorage.setItem("harbor_user_name", name || emailPrefix);
+      window.location.href = "/dashboard";
     } catch (err: any) {
       setError(err.message === "Failed to fetch" ? "无法连接服务器，请检查网络" : err.message || "登录失败");
     } finally {
@@ -86,7 +87,8 @@ export default function LoginPage() {
       }
       const data = await res.json();
       localStorage.setItem("harbor_refresh_token", data.refresh_token);
-      router.push("/dashboard");
+      localStorage.setItem("harbor_user_name", name || emailPrefix);
+      window.location.href = "/dashboard";
     } catch (err: any) {
       setError(err.message === "Failed to fetch" ? "无法连接服务器，请检查网络" : err.message || "注册失败");
     } finally {
