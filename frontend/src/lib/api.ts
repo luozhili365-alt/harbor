@@ -1,47 +1,39 @@
 const API_BASE = "/api/v1";
 
-interface TokenStore {
-  accessToken: string | null;
-  refreshToken: string | null;
+function getAccessToken(): string | null {
+  if (typeof window !== "undefined") return localStorage.getItem("harbor_access_token");
+  return null;
 }
 
-const tokens: TokenStore = {
-  accessToken: null,
-  refreshToken: null,
-};
+function getRefreshToken(): string | null {
+  if (typeof window !== "undefined") return localStorage.getItem("harbor_refresh_token");
+  return null;
+}
 
 export function setTokens(access: string, refresh: string) {
-  tokens.accessToken = access;
-  tokens.refreshToken = refresh;
   if (typeof window !== "undefined") {
+    localStorage.setItem("harbor_access_token", access);
     localStorage.setItem("harbor_refresh_token", refresh);
   }
 }
 
 export function getStoredRefreshToken(): string | null {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("harbor_refresh_token");
-  }
-  return null;
+  return getRefreshToken();
 }
 
 export function clearTokens() {
-  tokens.accessToken = null;
-  tokens.refreshToken = null;
   if (typeof window !== "undefined") {
+    localStorage.removeItem("harbor_access_token");
     localStorage.removeItem("harbor_refresh_token");
   }
 }
 
-async function refreshAccessToken(): Promise<boolean> {
-  const refresh = tokens.refreshToken || getStoredRefreshToken();
-  if (!refresh) return false;
-
+async function refreshAccessToken(refreshToken: string): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refresh }),
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
     if (!res.ok) return false;
     const data = await res.json();
@@ -58,18 +50,22 @@ export async function api(path: string, options: RequestInit = {}): Promise<any>
     ...(options.headers as Record<string, string> || {}),
   };
 
-  if (tokens.accessToken) {
-    headers["Authorization"] = `Bearer ${tokens.accessToken}`;
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
   let res = await fetch(url, { ...options, headers });
 
   // If 401, try refresh
-  if (res.status === 401 && tokens.refreshToken) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      headers["Authorization"] = `Bearer ${tokens.accessToken}`;
-      res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      const refreshed = await refreshAccessToken(refreshToken);
+      if (refreshed) {
+        headers["Authorization"] = `Bearer ${getAccessToken()}`;
+        res = await fetch(url, { ...options, headers });
+      }
     }
   }
 

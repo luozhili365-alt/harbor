@@ -57,6 +57,7 @@ export default function LoginPage() {
         throw new Error(d.detail || "邮箱或密码错误");
       }
       const data = await res.json();
+      localStorage.setItem("harbor_access_token", data.access_token);
       localStorage.setItem("harbor_refresh_token", data.refresh_token);
       localStorage.setItem("harbor_user_name", name || emailPrefix);
       window.location.href = "/dashboard";
@@ -87,6 +88,7 @@ export default function LoginPage() {
         throw new Error(d.detail || "注册失败");
       }
       const data = await res.json();
+      localStorage.setItem("harbor_access_token", data.access_token);
       localStorage.setItem("harbor_refresh_token", data.refresh_token);
       localStorage.setItem("harbor_user_name", name || emailPrefix);
       window.location.href = "/dashboard";
