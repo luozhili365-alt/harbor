@@ -26,6 +26,15 @@ async def list_tasks(
     )
 
 
+@router.get("/suggestions")
+async def get_suggestions(db: AsyncSession = Depends(get_db)):
+    """AI-powered task suggestions from emails, cases, and documents."""
+    from app.services.task import TaskService
+    service = TaskService(db)
+    suggestions = await service.get_suggestions()
+    return {"suggestions": suggestions}
+
+
 @router.get("/due-soon")
 async def get_due_soon(
     hours: int = Query(48, ge=1, le=720),

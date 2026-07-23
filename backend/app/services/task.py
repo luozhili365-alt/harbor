@@ -148,6 +148,38 @@ class TaskService:
         await self.db.flush()
         return task
 
+    async def get_suggestions(self) -> list[dict]:
+        """Generate AI task suggestions from cases, documents, and communications."""
+        from app.models.case import Case
+        from app.models.client import Client
+        from app.models.document import Document
+        now = datetime.now(timezone.utc)
+        suggestions = []
+
+        # Overdue tasks
+        overdue_result = await self.db.execute(
+            select(Task).where(Task.deleted_at.is_(None), Task.status == "PENDING", Task.due_date < now).limit(5)
+        )
+        for t in overdue_result.scalars().all():
+            suggestions.append({
+                "title": f"过期任务: {t.title}", "reminder_type": "TASK_DEADLINE", "priority": "HIGH",
+                "due_date": now.isoformat(), "reason": "任务已过期", "confidence": 0.98
+            })
+
+        # Case deadlines within 3 days
+        soon = now + timedelta(days=3)
+        case_result = await self.db.execute(
+            select(Case).where(Case.deadline_date.isnot(None), Case.deadline_date >= now, Case.deadline_date <= soon, Case.deleted_at.is_(None)).limit(5)
+        )
+        for c in case_result.scalars().all():
+            suggestions.append({
+                "title": f"案件截止: {c.case_no}", "reminder_type": "CASE_DEADLINE", "priority": "CRITICAL",
+                "due_date": c.deadline_date.isoformat() if c.deadline_date else now.isoformat(),
+                "case_id": c.id, "reason": "案件截止在即", "confidence": 0.96
+            })
+
+        return suggestions
+
     async def complete_task(self, task: Task, user_id: str) -> Task:
         task.status = "COMPLETED"
         task.completed_by = user_id
