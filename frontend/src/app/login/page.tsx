@@ -15,6 +15,7 @@ const EMAIL_DOMAINS = [
   { label: "@hotmail.com", value: "@hotmail.com" },
   { label: "@sina.com", value: "@sina.com" },
   { label: "@aliyun.com", value: "@aliyun.com" },
+  { label: "@aliyun.com", value: "@aliyun.com" },
   { label: "@foxmail.com", value: "@foxmail.com" },
   { label: "@yeah.net", value: "@yeah.net" },
   { label: "自定义", value: "__custom__" },

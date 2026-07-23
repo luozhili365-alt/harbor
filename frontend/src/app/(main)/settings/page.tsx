@@ -10,6 +10,7 @@ const PROVIDER_PRESETS: Record<string, { host: string; port: number; label: stri
   OUTLOOK: { host: "outlook.office365.com", port: 993, label: "Outlook / Office 365" },
   QQ: { host: "imap.qq.com", port: 993, label: "QQ 邮箱" },
   "163": { host: "imap.163.com", port: 993, label: "163 邮箱" },
+  ALIYUN: { host: "imap.aliyun.com", port: 993, label: "阿里邮箱" },
   CUSTOM: { host: "", port: 993, label: "自定义 IMAP" },
 };
 
