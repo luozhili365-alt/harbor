@@ -9,6 +9,16 @@ from app.services.auth import AuthService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@router.post("/register")
+async def register(request: LoginRequest, db: AsyncSession = Depends(get_db)):
+    service = AuthService(db)
+    user = await service.register(request.email, request.password)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该邮箱已被注册")
+    result = await service.login(request)
+    return result
+
+
 @router.post("/login", response_model=TokenResponse)
 async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     service = AuthService(db)

@@ -10,6 +10,22 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def register(self, email: str, password: str) -> User | None:
+        import uuid
+        result = await self.db.execute(select(User).where(User.email == email))
+        if result.scalar_one_or_none():
+            return None
+        user = User(
+            id=str(uuid.uuid4()),
+            email=email,
+            name=email.split("@")[0],
+            password_hash=hash_password(password),
+            role="broker",
+        )
+        self.db.add(user)
+        await self.db.flush()
+        return user
+
     async def login(self, request: LoginRequest) -> TokenResponse | None:
         result = await self.db.execute(
             select(User).where(User.email == request.email, User.is_active == True)
