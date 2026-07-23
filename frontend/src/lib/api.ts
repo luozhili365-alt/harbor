@@ -108,8 +108,9 @@ export const apiDelete = (path: string) =>
 export const apiUpload = async (path: string, formData: FormData) => {
   const url = `${API_BASE}${path}`;
   const headers: Record<string, string> = {};
-  if (tokens.accessToken) {
-    headers["Authorization"] = `Bearer ${tokens.accessToken}`;
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
   }
   const res = await fetch(url, { method: "POST", headers, body: formData });
   if (!res.ok) {
